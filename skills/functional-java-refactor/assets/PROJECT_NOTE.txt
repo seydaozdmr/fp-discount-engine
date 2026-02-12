@@ -1,0 +1,1 @@
+Use the live repository `fp-discount-engine` as the working asset. Do not copy the project into this skill. When the skill triggers, operate directly on the checked-out code under this workspace.
