@@ -7,6 +7,7 @@ import com.example.discount.OrderContext;
 import com.example.discount.OrderPricing;
 import com.example.discount.PricingResult;
 import com.example.discount.application.api.PricingRequest;
+import com.example.fpcore.LazyStream;
 import com.example.fpcore.Result;
 import com.example.fpcore.Validation;
 import org.springframework.stereotype.Service;
@@ -18,13 +19,16 @@ import java.util.List;
 @Service
 public class PricingService {
 
-    private static final BigDecimal THOUSAND = new BigDecimal("1000.00");
+    private static final BigDecimal FIVE_HUNDRED = new BigDecimal("500.00");
+    private static final BigDecimal ONE_PERCENT = new BigDecimal("0.01");
+    private static final BigDecimal TWO_PERCENT = new BigDecimal("0.02");
+    private static final BigDecimal MAX_DYNAMIC_RATE = new BigDecimal("0.10");
     private final DiscountOrchestratorV2 orchestrator = new DiscountOrchestratorV2();
 
     public Result<PricingResult> quote(PricingRequest request) {
         return validateRequest(request)
                 .toResult()
-                .flatMap(ctx -> orchestrator.priceValidated(ctx, defaultRules()));
+                .flatMap(ctx -> orchestrator.priceValidated(ctx, defaultRules(ctx)));
     }
 
     private Validation<OrderContext> validateRequest(PricingRequest request) {
@@ -59,8 +63,8 @@ public class PricingService {
         ));
     }
 
-    private List<DiscountRule> defaultRules() {
-        return List.of(
+    private List<DiscountRule> defaultRules(OrderContext ctx) {
+        LazyStream<DiscountRule> baseRules = LazyStream.of(
                 new DiscountRule(
                         "VIP_10_PERCENT",
                         DiscountGroup.VIP,
@@ -74,14 +78,37 @@ public class PricingService {
                         5,
                         OrderContext::hasCoupon,
                         c -> new BigDecimal("50.00")
-                ),
-                new DiscountRule(
-                        "OVER_1000_5_PERCENT",
-                        DiscountGroup.CAMPAIGN,
-                        10,
-                        c -> c.pricing().total().compareTo(THOUSAND) > 0,
-                        c -> c.pricing().total().multiply(new BigDecimal("0.05"))
                 )
         );
+
+        LazyStream<DiscountRule> dynamicCampaignRules = LazyStream
+                .iterate(new CampaignTier(FIVE_HUNDRED, TWO_PERCENT), this::nextTier)
+                .takeWhile(tier -> tier.threshold().compareTo(ctx.pricing().subtotal()) <= 0
+                        && tier.rate().compareTo(MAX_DYNAMIC_RATE) <= 0)
+                .map(this::toCampaignRule);
+
+        return baseRules.append(() -> dynamicCampaignRules).toList();
+    }
+
+    private CampaignTier nextTier(CampaignTier current) {
+        return new CampaignTier(
+                current.threshold().add(FIVE_HUNDRED),
+                current.rate().add(ONE_PERCENT)
+        );
+    }
+
+    private DiscountRule toCampaignRule(CampaignTier tier) {
+        String name = "OVER_" + tier.threshold().intValue() + "_DYNAMIC";
+        int priority = 100 - tier.rate().movePointRight(2).intValue();
+        return new DiscountRule(
+                name,
+                DiscountGroup.CAMPAIGN,
+                priority,
+                c -> c.pricing().total().compareTo(tier.threshold()) >= 0,
+                c -> c.pricing().total().multiply(tier.rate())
+        );
+    }
+
+    private record CampaignTier(BigDecimal threshold, BigDecimal rate) {
     }
 }
