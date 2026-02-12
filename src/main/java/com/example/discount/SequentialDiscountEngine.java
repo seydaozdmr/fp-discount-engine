@@ -9,18 +9,27 @@ import java.util.List;
 public final class SequentialDiscountEngine {
 
     public OrderPricing applySequentially(OrderContext ctx, List<DiscountRule> rules) {
+        return applySequentiallyResult(ctx, rules).getOrThrow();
+    }
+
+    public Result<OrderPricing> applySequentiallyResult(OrderContext ctx, List<DiscountRule> rules) {
         OrderContext current = ctx;
 
         for (DiscountRule rule : rules) {
-            if (!rule.eligible().test(current)) {
+            Result<BigDecimal> evaluated = rule.evaluate(current);
+            if (evaluated.isFailure()) {
+                return Result.failure(evaluated.failureCause());
+            }
+            if (evaluated.isEmpty()) {
                 continue;
             }
-            BigDecimal discount = safeAmount(current, rule.calculate().apply(current));
+
+            BigDecimal discount = safeAmount(current, evaluated.getOrThrow());
             OrderPricing updated = current.pricing().addDiscount(discount);
             current = current.withPricing(updated);
         }
 
-        return current.pricing();
+        return Result.success(current.pricing());
     }
 
     private static BigDecimal safeAmount(OrderContext ctx, BigDecimal amount) {

@@ -97,4 +97,63 @@ class DiscountEnginesTest {
 
         assertTrue(result.isFailure());
     }
+
+    @Test
+    void sequential_result_surfaces_rule_failures() {
+        OrderPricing start = OrderPricing.of(new BigDecimal("250.00"));
+        OrderContext ctx = new OrderContext(true, false, start);
+
+        DiscountRule badRule = new DiscountRule(
+                "BAD_SEQ",
+                DiscountGroup.VIP,
+                1,
+                c -> true,
+                c -> { throw new IllegalStateException("seq boom"); }
+        );
+
+        Result<OrderPricing> result =
+                new SequentialDiscountEngine().applySequentiallyResult(ctx, List.of(badRule));
+
+        assertTrue(result.isFailure());
+    }
+
+    @Test
+    void best_wins_result_empty_means_no_eligible_rule() {
+        OrderPricing start = OrderPricing.of(new BigDecimal("100.00"));
+        OrderContext ctx = new OrderContext(false, false, start);
+
+        DiscountRule neverEligible = new DiscountRule(
+                "NOPE",
+                DiscountGroup.CAMPAIGN,
+                1,
+                c -> false,
+                c -> new BigDecimal("10.00")
+        );
+
+        Result<BestDiscountWinsEngine.AppliedDiscount> pickResult =
+                new BestDiscountWinsEngine().pickBestResult(ctx, List.of(neverEligible));
+
+        assertTrue(pickResult.isEmpty());
+        assertEquals(new BigDecimal("100.00"),
+                new BestDiscountWinsEngine().applyBestResult(ctx, List.of(neverEligible)).getOrThrow().total());
+    }
+
+    @Test
+    void best_wins_result_surfaces_rule_failures() {
+        OrderPricing start = OrderPricing.of(new BigDecimal("100.00"));
+        OrderContext ctx = new OrderContext(false, false, start);
+
+        DiscountRule badRule = new DiscountRule(
+                "BAD_BEST",
+                DiscountGroup.CAMPAIGN,
+                1,
+                c -> true,
+                c -> { throw new IllegalStateException("best boom"); }
+        );
+
+        Result<BestDiscountWinsEngine.AppliedDiscount> result =
+                new BestDiscountWinsEngine().pickBestResult(ctx, List.of(badRule));
+
+        assertTrue(result.isFailure());
+    }
 }
