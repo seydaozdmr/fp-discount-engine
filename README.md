@@ -42,6 +42,11 @@ Java 17 Maven project for a functional discount engine with:
   - default rules + orchestrator
   - functional result mapping to HTTP response
 
+## Diagrams
+
+- Sequence flow: `docs/pricing-sequence-diagram.md`
+- Rule evaluation flow: `docs/rule-evaluation-flow.md`
+
 ## Run
 
 ### Run tests
