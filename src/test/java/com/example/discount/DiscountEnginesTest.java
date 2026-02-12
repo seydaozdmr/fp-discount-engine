@@ -1,5 +1,6 @@
 package com.example.discount;
 
+import com.example.fpcore.Result;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -155,5 +156,19 @@ class DiscountEnginesTest {
                 new BestDiscountWinsEngine().pickBestResult(ctx, List.of(badRule));
 
         assertTrue(result.isFailure());
+    }
+
+    @Test
+    void price_validated_accumulates_multiple_errors() {
+        Result<PricingResult> result = new DiscountOrchestratorV2().priceValidated(null, List.of(
+                new DiscountRule(null, null, 0, null, null)
+        ));
+
+        assertTrue(result.isFailure());
+        String message = result.failureCause().getMessage();
+        assertTrue(message.contains("OrderContext is required"));
+        assertTrue(message.contains("must have a name"));
+        assertTrue(message.contains("must have a group"));
+        assertTrue(message.contains("must have an eligibility predicate"));
     }
 }

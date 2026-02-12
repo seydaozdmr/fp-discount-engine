@@ -1,15 +1,12 @@
-package com.example.discount;
+package com.example.fpcore;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-/**
- * Result represents either:
- * - Success(value)
- * - Failure(exception)
- * - Empty (optional/absent data, not an error)
- */
 public abstract class Result<T> {
 
     @SuppressWarnings("rawtypes")
@@ -21,9 +18,9 @@ public abstract class Result<T> {
 
     public abstract T getOrElse(T defaultValue);
 
-    public abstract T getOrElse(Supplier<T> defaultValue);
+    public abstract T getOrElseGet(Supplier<T> defaultSupplier);
 
-    public abstract Result<T> orElse(Supplier<Result<T>> defaultValue);
+    public abstract Result<T> orElse(Supplier<Result<T>> defaultSupplier);
 
     public abstract T getOrThrow();
 
@@ -39,9 +36,14 @@ public abstract class Result<T> {
         return this instanceof Empty<?>;
     }
 
+    public Result<T> filter(Predicate<T> predicate, String message) {
+        Objects.requireNonNull(predicate, "predicate");
+        return flatMap(v -> predicate.test(v) ? this : Result.failure(message));
+    }
+
     public Result<T> mapFailure(String message) {
         if (this instanceof Failure<T> f) {
-            return failure(new IllegalStateException(message, f.exception));
+            return Result.failure(new IllegalStateException(message, f.exception));
         }
         return this;
     }
@@ -53,8 +55,15 @@ public abstract class Result<T> {
         return null;
     }
 
+    public Option<T> toOption() {
+        if (isSuccess()) {
+            return Option.some(getOrThrow());
+        }
+        return Option.none();
+    }
+
     public static <T> Result<T> success(T value) {
-        return new Success<>(value);
+        return new Success<>(Objects.requireNonNull(value, "value"));
     }
 
     public static <T> Result<T> failure(String message) {
@@ -62,7 +71,7 @@ public abstract class Result<T> {
     }
 
     public static <T> Result<T> failure(RuntimeException exception) {
-        return new Failure<>(exception);
+        return new Failure<>(Objects.requireNonNull(exception, "exception"));
     }
 
     public static <T> Result<T> failure(Exception exception) {
@@ -71,7 +80,39 @@ public abstract class Result<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> Result<T> empty() {
-        return EMPTY;
+        return (Result<T>) EMPTY;
+    }
+
+    public static <A, B> Function<Result<A>, Result<B>> lift(Function<A, B> f) {
+        return ra -> ra.map(f);
+    }
+
+    public static <A, B, C> Result<C> map2(Result<A> ra, Result<B> rb, Function<A, Function<B, C>> f) {
+        return ra.flatMap(a -> rb.map(b -> f.apply(a).apply(b)));
+    }
+
+    public static <A> Result<List<A>> sequence(List<Result<A>> list) {
+        Result<List<A>> acc = Result.success(List.of());
+        for (Result<A> item : list) {
+            acc = map2(item, acc, a -> xs -> {
+                ArrayList<A> next = new ArrayList<>(xs.size() + 1);
+                next.addAll(xs);
+                next.add(a);
+                return List.copyOf(next);
+            });
+            if (acc.isFailure() || acc.isEmpty()) {
+                return acc;
+            }
+        }
+        return acc;
+    }
+
+    public static <A, B> Result<List<B>> traverse(List<A> list, Function<A, Result<B>> f) {
+        List<Result<B>> mapped = new ArrayList<>(list.size());
+        for (A a : list) {
+            mapped.add(f.apply(a));
+        }
+        return sequence(mapped);
     }
 
     private static class Empty<T> extends Result<T> {
@@ -91,13 +132,13 @@ public abstract class Result<T> {
         }
 
         @Override
-        public T getOrElse(Supplier<T> defaultValue) {
-            return defaultValue.get();
+        public T getOrElseGet(Supplier<T> defaultSupplier) {
+            return defaultSupplier.get();
         }
 
         @Override
-        public Result<T> orElse(Supplier<Result<T>> defaultValue) {
-            return defaultValue.get();
+        public Result<T> orElse(Supplier<Result<T>> defaultSupplier) {
+            return defaultSupplier.get();
         }
 
         @Override
@@ -115,7 +156,7 @@ public abstract class Result<T> {
         private final RuntimeException exception;
 
         private Failure(RuntimeException exception) {
-            this.exception = Objects.requireNonNull(exception, "exception");
+            this.exception = exception;
         }
 
         @Override
@@ -130,16 +171,16 @@ public abstract class Result<T> {
 
         @Override
         public T getOrElse(T defaultValue) {
-            throw exception;
+            return defaultValue;
         }
 
         @Override
-        public T getOrElse(Supplier<T> defaultValue) {
-            throw exception;
+        public T getOrElseGet(Supplier<T> defaultSupplier) {
+            return defaultSupplier.get();
         }
 
         @Override
-        public Result<T> orElse(Supplier<Result<T>> defaultValue) {
+        public Result<T> orElse(Supplier<Result<T>> defaultSupplier) {
             return this;
         }
 
@@ -158,14 +199,15 @@ public abstract class Result<T> {
         private final T value;
 
         private Success(T value) {
-            this.value = Objects.requireNonNull(value, "value");
+            this.value = value;
         }
 
         @Override
         public <U> Result<U> map(Function<T, U> f) {
             try {
-                return success(f.apply(value));
-            } catch (Exception e) {
+                U next = f.apply(value);
+                return next == null ? Result.empty() : success(next);
+            } catch (RuntimeException e) {
                 return failure(e);
             }
         }
@@ -173,8 +215,9 @@ public abstract class Result<T> {
         @Override
         public <U> Result<U> flatMap(Function<T, Result<U>> f) {
             try {
-                return f.apply(value);
-            } catch (Exception e) {
+                Result<U> next = f.apply(value);
+                return next == null ? Result.empty() : next;
+            } catch (RuntimeException e) {
                 return failure(e);
             }
         }
@@ -185,12 +228,12 @@ public abstract class Result<T> {
         }
 
         @Override
-        public T getOrElse(Supplier<T> defaultValue) {
+        public T getOrElseGet(Supplier<T> defaultSupplier) {
             return value;
         }
 
         @Override
-        public Result<T> orElse(Supplier<Result<T>> defaultValue) {
+        public Result<T> orElse(Supplier<Result<T>> defaultSupplier) {
             return this;
         }
 

@@ -1,5 +1,7 @@
 package com.example.discount;
 
+import com.example.fpcore.Result;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -13,23 +15,15 @@ public final class SequentialDiscountEngine {
     }
 
     public Result<OrderPricing> applySequentiallyResult(OrderContext ctx, List<DiscountRule> rules) {
-        OrderContext current = ctx;
-
-        for (DiscountRule rule : rules) {
-            Result<BigDecimal> evaluated = rule.evaluate(current);
-            if (evaluated.isFailure()) {
-                return Result.failure(evaluated.failureCause());
-            }
-            if (evaluated.isEmpty()) {
-                continue;
-            }
-
-            BigDecimal discount = safeAmount(current, evaluated.getOrThrow());
-            OrderPricing updated = current.pricing().addDiscount(discount);
-            current = current.withPricing(updated);
-        }
-
-        return Result.success(current.pricing());
+        return rules.stream().reduce(
+                Result.success(ctx),
+                (acc, rule) -> acc.flatMap(current ->
+                        rule.evaluate(current)
+                                .map(amount -> current.withPricing(current.pricing().addDiscount(safeAmount(current, amount))))
+                                .orElse(() -> Result.success(current))
+                ),
+                (left, right) -> left.flatMap(ignored -> right)
+        ).map(OrderContext::pricing);
     }
 
     private static BigDecimal safeAmount(OrderContext ctx, BigDecimal amount) {

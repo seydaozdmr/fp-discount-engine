@@ -1,5 +1,7 @@
 package com.example.discount;
 
+import com.example.fpcore.Result;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -22,7 +24,7 @@ public final class GroupedResultDemo {
                 new DiscountRule("CAMPAIGN200", DiscountGroup.CAMPAIGN, 10, c -> true,
                         c -> new BigDecimal("200.00"))
         );
-        Result<PricingResult> success = orchestrator.priceResult(ctx, okRules);
+        Result<PricingResult> success = orchestrator.priceValidated(ctx, okRules);
         System.out.println("success: " + success);
 
         DiscountRule badRule = new DiscountRule(
@@ -34,7 +36,7 @@ public final class GroupedResultDemo {
                     throw new IllegalStateException("grouped rule exploded");
                 }
         );
-        Result<PricingResult> failure = orchestrator.priceResult(ctx, List.of(badRule));
+        Result<PricingResult> failure = orchestrator.priceValidated(ctx, List.of(badRule));
         System.out.println("failure: " + failure);
         System.out.println();
     }
