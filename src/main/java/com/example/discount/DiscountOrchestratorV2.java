@@ -42,6 +42,6 @@ public final class DiscountOrchestratorV2 {
                 DiscountGroup.COUPON
         );
 
-        return applier.apply(ctx, selected, groupOrder, exclusivity, cap);
+        return applier.applyFold(ctx, selected, groupOrder, exclusivity, cap);
     }
 }
