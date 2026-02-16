@@ -115,6 +115,21 @@ public abstract class Result<T> {
         return sequence(mapped);
     }
 
+    public static <A, B> Result<List<B>> traverseReduce(List<A> list, Function<A, Result<B>> f) {
+        Result<List<B>> start = Result.success(List.of());
+
+        return list.stream().reduce(
+                start,
+                (acc, a) -> map2(acc, f.apply(a), xs -> b -> {
+                    ArrayList<B> next = new ArrayList<>(xs.size() + 1);
+                    next.addAll(xs);
+                    next.add(b);
+                    return List.copyOf(next);
+                } ), (x, y) -> { throw new UnsupportedOperationException("no parallel");
+                }
+        );
+    }
+
     private static class Empty<T> extends Result<T> {
         @Override
         public <U> Result<U> map(Function<T, U> f) {
