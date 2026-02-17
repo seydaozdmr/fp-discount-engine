@@ -3,10 +3,10 @@ package com.example.fpcore;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class FpCoreTest {
 
@@ -61,4 +61,66 @@ class FpCoreTest {
         Result<List<Integer>> result = Result.sequence(list);
         assertEquals(List.of(1, 2, 3), result.getOrThrow());
     }
+
+    @Test
+    void result_map2_fail_fast_but_validation_map2_accumulates_errors() {
+        Result<Integer> resultA = Result.failure("a failed");
+        Result<Integer> resultB = Result.failure("b failed");
+
+        Result<Integer> resultC = Result.map2(resultA, resultB, a -> b -> a + b);
+
+        assertTrue(resultC.isFailure());
+        assertEquals("a failed", resultC.failureCause().getMessage());
+
+        Validation<Integer> validationA = Validation.invalid("a missing");
+        Validation<Integer> validationB = Validation.invalid("b missing");
+
+        Validation<Integer> validationC = Validation.map2(validationA, validationB, Integer::sum);
+        assertFalse(validationC.isValid());
+        assertEquals(
+                List.of("a missing", "b missing"), validationC.errors()
+        );
+    }
+
+    @Test
+    void traverse_reduce_returns_failure_when_any_item_fails() {
+        List<Integer> inputs = List.of(1, 2, 3);
+
+        Result<List<Integer>> result = Result.traverseReduce(inputs, i-> i==2 ? Result.failure("rule-2 failed") :
+                Result.success(i * 10));
+
+        assertTrue(result.isFailure());
+        assertEquals("rule-2 failed", result.failureCause().getMessage());
+    }
+
+    @Test
+    void traverse_reduce_may_still_invoke_mapper_after_failure() {
+        List<Integer> inputs = List.of(1, 2, 3);
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger(0);
+
+        Result<List<Integer>> result = Result.traverseReduce(inputs, i -> {
+            calls.incrementAndGet();
+            return i == 2 ? Result.failure("boom at 2") : Result.success(i);
+        });
+
+        assertTrue(result.isFailure());
+        assertEquals("boom at 2", result.failureCause().getMessage());
+
+        // Eager evaluation nedeniyle 3 elemanda da mapper çağrılabilir
+        assertEquals(3, calls.get());
+    }
+
+    @Test
+    void traverse_reduce_short_circuit_stops_mapper_calls_after_failure() {
+        List<Integer> inputs = List.of(1,2,3);
+
+        AtomicInteger calls = new AtomicInteger(0);
+        Result<List<Integer>> result = Result.traverseReduceShortCircuit(inputs, i -> {
+            calls.incrementAndGet();
+            return i == 2 ? Result.failure("boom at 2") : Result.success(i);
+        });
+        assertTrue(result.isFailure());
+        assertEquals("boom at 2", result.failureCause().getMessage());
+        assertEquals(2, calls.get());
+     }
 }

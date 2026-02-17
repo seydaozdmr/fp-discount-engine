@@ -43,7 +43,7 @@ public final class GroupedSelector {
             DiscountGroup group,
             List<DiscountRule> groupRules
     ) {
-        return Result.traverseReduce(groupRules, rule -> toCandidateOption(ctx, group, rule))
+        return Result.traverseReduceShortCircuit(groupRules, rule -> toCandidateOption(ctx, group, rule))
                 .map(GroupedSelector::bestCandidate)
                 .flatMap(best -> best.isDefined() ? Result.success(best.getOrThrow()): Result.empty());
     }

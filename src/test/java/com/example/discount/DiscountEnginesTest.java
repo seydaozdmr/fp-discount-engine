@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -170,5 +171,27 @@ class DiscountEnginesTest {
         assertTrue(message.contains("must have a name"));
         assertTrue(message.contains("must have a group"));
         assertTrue(message.contains("must have an eligibility predicate"));
+    }
+
+    @Test
+    void grouped_selector_short_circuits_after_failure() {
+        OrderContext ctx = new OrderContext(true, true, OrderPricing.of(new BigDecimal("100.00")));
+        AtomicInteger count = new AtomicInteger(0);
+
+        DiscountRule ok = new DiscountRule("OK", DiscountGroup.CAMPAIGN, 1, c-> true, c-> new BigDecimal("10.00"));
+        DiscountRule failing = new DiscountRule("FAIL", DiscountGroup.CAMPAIGN, 2, c-> true, c-> {
+            throw new IllegalStateException("boom");
+        });
+
+        DiscountRule third = new DiscountRule("THIRD", DiscountGroup.CAMPAIGN, 3, c-> true, c-> {
+            count.incrementAndGet();
+            return new BigDecimal("5.00");
+        });
+
+        Result<List<SelectedDiscount>> result = new GroupedSelector().selectBestPerGroupResult(ctx, List.of(ok, failing,third));
+
+        assertTrue(result.isFailure());
+        assertEquals(0, count.get());
+
     }
 }

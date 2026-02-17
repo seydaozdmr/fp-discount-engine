@@ -130,6 +130,23 @@ public abstract class Result<T> {
         );
     }
 
+    public static <A,B> Result<List<B>> traverseReduceShortCircuit(List<A> list, Function<A, Result<B>> f){
+        Result<List<B>> result = Result.success(List.of());
+        for (A a : list) {
+            if (!result.isSuccess()) {
+                return result;
+            }
+            Result<B> current = f.apply(a);
+            result = map2(result, current, xs -> b -> {
+                ArrayList<B> next = new ArrayList<>(xs.size() + 1);
+                next.addAll(xs);
+                next.add(b);
+                return List.copyOf(next);
+            });
+        }
+        return result;
+    }
+
     private static class Empty<T> extends Result<T> {
         @Override
         public <U> Result<U> map(Function<T, U> f) {
