@@ -6,10 +6,14 @@ import com.example.discount.DiscountRule;
 import com.example.discount.OrderContext;
 import com.example.discount.OrderPricing;
 import com.example.discount.PricingResult;
+import com.example.discount.application.api.ErrorResponse;
 import com.example.discount.application.api.PricingRequest;
+import com.example.discount.application.api.PricingResponse;
 import com.example.fpcore.LazyStream;
 import com.example.fpcore.Result;
 import com.example.fpcore.Validation;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,6 +33,24 @@ public class PricingService {
         return validateRequest(request)
                 .toResult()
                 .flatMap(ctx -> orchestrator.priceValidated(ctx, defaultRules(ctx)));
+    }
+
+    public ResponseEntity<?> quoteHttp(PricingRequest request) {
+        return toHttpResponse(quote(request));
+    }
+
+    private ResponseEntity<?> toHttpResponse(Result<PricingResult> result) {
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(PricingResponse.from(result.getOrThrow()));
+        }
+        if (result.isFailure()) {
+            return ResponseEntity.badRequest().body(new ErrorResponse(result.failureCause().getMessage()));
+        }
+        if (result.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ErrorResponse("no price could be calculated"));
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Unexpected pricing result state"));
     }
 
     private Validation<OrderContext> validateRequest(PricingRequest request) {
