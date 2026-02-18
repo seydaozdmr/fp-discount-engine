@@ -123,4 +123,12 @@ class FpCoreTest {
         assertEquals("boom at 2", result.failureCause().getMessage());
         assertEquals(2, calls.get());
      }
+
+     @Test
+    void folds_map_filter_reverse_work() {
+        List<Integer> inputs = List.of(1, 2, 3, 4, 5);
+        assertEquals(List.of(2,4,6,8,10), Folds.map(inputs, x -> x * 2));
+        assertEquals(List.of(2,4), Folds.filter(inputs, x -> x  % 2 == 0));
+        assertEquals(List.of(5,4,3,2,1), Folds.reverse(inputs));
+     }
 }
