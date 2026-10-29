@@ -47,6 +47,18 @@ public final class BestWinsResultDemo {
         );
         Result<BestDiscountWinsEngine.AppliedDiscount> failurePick = engine.pickBestResult(ctx, List.of(badRule));
         System.out.println("failure pick: " + failurePick);
+
+        // Chapter 13: apply effects inside the context instead of unwrapping.
+        // Success → first effect; Failure → message flows to the second effect; Empty → nothing.
+        System.out.println("-- effects at the edge --");
+        report("ok", successPick);
+        report("empty", emptyPick);
+        report("failure", failurePick);
         System.out.println();
+    }
+
+    private static void report(String label, Result<BestDiscountWinsEngine.AppliedDiscount> pick) {
+        pick.forEachOrFail(p -> System.out.println(label + " → applied " + p.ruleName() + " " + p.amount()))
+            .forEach(msg -> System.out.println(label + " → error: " + msg));
     }
 }

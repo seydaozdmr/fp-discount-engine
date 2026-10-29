@@ -7,13 +7,12 @@ import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * Evaluates all eligible rules and applies only the one with the biggest discount.
- * If there is a tie, lower priority wins.
+ * Evaluates all eligible rules and applies only the best one,
+ * ranked by {@link DiscountRanking#BEST_FIRST}.
  */
 public final class BestDiscountWinsEngine {
 
     public record AppliedDiscount(String ruleName, DiscountGroup group, BigDecimal amount) {}
-    private record Candidate(DiscountRule rule, BigDecimal amount) {}
 
     public AppliedDiscount pickBest(OrderContext ctx, List<DiscountRule> rules) {
         return pickBestResult(ctx, rules)
@@ -22,7 +21,7 @@ public final class BestDiscountWinsEngine {
     }
 
     public Result<AppliedDiscount> pickBestResult(OrderContext ctx, List<DiscountRule> rules) {
-        Candidate best = null;
+        SelectedDiscount best = null;
         for (DiscountRule rule : rules) {
             Result<BigDecimal> evaluated = rule.evaluate(ctx);
             if (evaluated.isFailure()) {
@@ -32,8 +31,9 @@ public final class BestDiscountWinsEngine {
                 continue;
             }
 
-            Candidate candidate = new Candidate(rule, safeAmount(ctx, evaluated.getOrThrow()));
-            if (best == null || isBetter(candidate, best)) {
+            SelectedDiscount candidate = new SelectedDiscount(
+                    rule.name(), rule.group(), rule.priority(), safeAmount(ctx, evaluated.getOrThrow()));
+            if (best == null || DiscountRanking.BEST_FIRST.compare(candidate, best) < 0) {
                 best = candidate;
             }
         }
@@ -41,7 +41,7 @@ public final class BestDiscountWinsEngine {
         if (best == null) {
             return Result.empty();
         }
-        return Result.success(new AppliedDiscount(best.rule.name(), best.rule.group(), best.amount));
+        return Result.success(new AppliedDiscount(best.ruleName(), best.group(), best.amount()));
     }
 
     public OrderPricing applyBest(OrderContext ctx, List<DiscountRule> rules) {
@@ -56,14 +56,6 @@ public final class BestDiscountWinsEngine {
 
     private static AppliedDiscount noDiscount() {
         return new AppliedDiscount("NO_DISCOUNT", DiscountGroup.CAMPAIGN, BigDecimal.ZERO);
-    }
-
-    private static boolean isBetter(Candidate a, Candidate b) {
-        int amountCmp = a.amount.compareTo(b.amount);
-        if (amountCmp != 0) {
-            return amountCmp > 0;
-        }
-        return a.rule.priority() < b.rule.priority();
     }
 
     private static BigDecimal safeAmount(OrderContext ctx, BigDecimal amount) {

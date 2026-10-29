@@ -82,6 +82,19 @@ public final class Option<T> {
         return value;
     }
 
+    public static <A,B,C> Option<C> map2 (Option<A> a, Option<B> b, Function<A, Function<B, C>> mapper) {
+        return a.flatMap(ax -> b.map(bx -> mapper.apply(ax).apply(bx)));
+    }
+
+    private static <A, B> Option<List<B>> traverse(List<A> list, Function<A, Option<B>> f) {
+        return list.foldRight(some(List.list()),
+                x -> y -> map2(f.apply(x), y, a -> b -> b.cons(a)));
+    }
+    // sequence artık traverse cinsinden:
+    public static <A> Option<List<A>> sequence(List<Option<A>> list) {
+        return traverse(list, x -> x);
+    }
+
     public Result<T> toResult(String message) {
         return defined ? Result.success(value) : Result.failure(message);
     }

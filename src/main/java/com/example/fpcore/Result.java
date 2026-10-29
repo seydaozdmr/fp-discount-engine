@@ -36,9 +36,17 @@ public abstract class Result<T> {
         return this instanceof Empty<?>;
     }
 
+    public Result<T> filter(Predicate<T> predicate) {
+        return filter(predicate, "Condition not matched");
+    }
+
     public Result<T> filter(Predicate<T> predicate, String message) {
         Objects.requireNonNull(predicate, "predicate");
         return flatMap(v -> predicate.test(v) ? this : Result.failure(message));
+    }
+
+    public boolean exists(Predicate<T> predicate) {
+        return map(predicate::test).getOrElse(false);
     }
 
     public Result<T> mapFailure(String message) {
@@ -46,6 +54,62 @@ public abstract class Result<T> {
             return Result.failure(new IllegalStateException(message, f.exception));
         }
         return this;
+    }
+
+    public Result<T> mapFailure(String message, Exception cause) {
+        if (this instanceof Failure<T> f) {
+            return Result.failure(new IllegalStateException(message, f.exception));
+        }
+        return this;
+    }
+
+    public Result<T> mapFailure(Exception replacement) {
+        if (this instanceof Failure<T>) {
+            return Result.failure(replacement);
+        }
+        return this;
+    }
+
+    public void forEach(Effect<T> ef) {
+        if (this instanceof Success<T> s) {
+            ef.apply(s.value);
+        }
+        // Empty and Failure: do nothing.
+    }
+
+    public void forEachOrThrow(Effect<T> ef) {
+        if (this instanceof Success<T> s) {
+            ef.apply(s.value);
+        } else if (this instanceof Failure<T> f) {
+            throw f.exception;
+        }
+        // Empty: do nothing, Empty isn't an error.
+    }
+
+    /**
+     * Applies the effect on Success and returns Empty; on Failure returns the error message
+     * as a Success so a second effect (logging, printing) can handle it. Not pure: it runs ef.
+     */
+    public Result<String> forEachOrFail(Effect<T> ef) {
+        if (this instanceof Success<T> s) {
+            ef.apply(s.value);
+            return Result.empty();
+        }
+        if (this instanceof Failure<T> f) {
+            return Result.success(String.valueOf(f.exception.getMessage()));
+        }
+        return Result.empty();
+    }
+
+    public Result<RuntimeException> forEachOrException(Effect<T> ef) {
+        if (this instanceof Success<T> s) {
+            ef.apply(s.value);
+            return Result.empty();
+        }
+        if (this instanceof Failure<T> f) {
+            return Result.success(f.exception);
+        }
+        return Result.empty();
     }
 
     public RuntimeException failureCause() {
@@ -83,12 +147,49 @@ public abstract class Result<T> {
         return (Result<T>) EMPTY;
     }
 
+    public static <T> Result<T> of(T value) {
+        return value != null ? success(value) : Result.failure("Null value");
+    }
+
+    public static <T> Result<T> of(T value, String message) {
+        return value != null ? success(value) : Result.failure(message);
+    }
+
+    public static <T> Result<T> of(Predicate<T> predicate, T value) {
+        try {
+            return predicate.test(value) ? success(value) : empty();
+        } catch (Exception e) {
+            String errMessage = String.format("Exception while evaluating predicate: %s", value);
+            return Result.failure(new IllegalStateException(errMessage, e));
+        }
+    }
+
+    public static <T> Result<T> of(Predicate<T> predicate, T value, String message) {
+        try {
+            return predicate.test(value) ? success(value) : Result.failure(String.format(message, value));
+        } catch (Exception e) {
+            String errMessage = String.format("Exception while evaluating predicate: %s",
+                    String.format(message, value));
+            return Result.failure(new IllegalStateException(errMessage, e));
+        }
+    }
+
     public static <A, B> Function<Result<A>, Result<B>> lift(Function<A, B> f) {
         return ra -> ra.map(f);
     }
 
+    public static <A, B, C> Function<Result<A>, Function<Result<B>, Result<C>>>
+            lift2(Function<A, Function<B, C>> f) {
+        return ra -> rb -> ra.map(f).flatMap(rb::map);
+    }
+
+    public static <A, B, C, D> Function<Result<A>, Function<Result<B>, Function<Result<C>, Result<D>>>>
+            lift3(Function<A, Function<B, Function<C, D>>> f) {
+        return ra -> rb -> rc -> ra.map(f).flatMap(rb::map).flatMap(rc::map);
+    }
+
     public static <A, B, C> Result<C> map2(Result<A> ra, Result<B> rb, Function<A, Function<B, C>> f) {
-        return ra.flatMap(a -> rb.map(b -> f.apply(a).apply(b)));
+        return lift2(f).apply(ra).apply(rb);
     }
 
     public static <A> Result<List<A>> sequence(List<Result<A>> list) {

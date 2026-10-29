@@ -47,5 +47,10 @@ public class CollectionUtils {
         return Collections.unmodifiableList(workingCopy);
     }
 
+    public static <T> List<T> prepend(T t, List<T> list) {
+        List<T> workingCopy = copy(list);
+        workingCopy.add(0, t);
+        return Collections.unmodifiableList(workingCopy);
+    }
 
 }

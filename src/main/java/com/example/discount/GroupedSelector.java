@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Selects best rule per group by (amount desc, priority asc).
+ * Selects best rule per group using {@link DiscountRanking#BEST_FIRST}.
  */
 public final class GroupedSelector {
 
@@ -19,7 +19,10 @@ public final class GroupedSelector {
     public Result<List<SelectedDiscount>> selectBestPerGroupResult(OrderContext ctx, List<DiscountRule> rules) {
         // Group rules by their discount group
         Map<DiscountGroup, List<DiscountRule>> byGroup =
-                rules.stream().collect(Collectors.groupingBy(DiscountRule::group));
+                rules.stream().collect(Collectors.groupingBy(
+                        DiscountRule::group,
+                        () -> new EnumMap<>(DiscountGroup.class),
+                        Collectors.toList()));
 
         List<SelectedDiscount> selected = new ArrayList<>();
         // For each group, find the best discount and add it to the selected list
@@ -67,17 +70,9 @@ public final class GroupedSelector {
         return candidates.stream()
                 .filter(Option::isDefined)
                 .map(Option::getOrThrow)
-                .reduce((left, right) -> isBetter(left, right) ? left : right)
+                .min(DiscountRanking.BEST_FIRST)
                 .map(Option::some)
                 .orElseGet(Option::none);
-    }
-    // Returns true if candidate is better than best by (amount desc, priority asc)
-    private static boolean isBetter(SelectedDiscount candidate, SelectedDiscount best) {
-        int amountCmp = candidate.amount().compareTo(best.amount());
-        if (amountCmp != 0) {
-            return amountCmp > 0;
-        }
-        return candidate.priority() < best.priority();
     }
     // Ensures amount is non-negative and does not exceed order total.
     private static BigDecimal safeAmount(OrderContext ctx, BigDecimal amount) {
