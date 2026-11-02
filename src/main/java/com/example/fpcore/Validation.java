@@ -28,6 +28,36 @@ public final class Validation<T> {
         return new Validation<>(null, List.copyOf(errors));
     }
 
+    /**
+     * Bridge from the short-circuiting Result to the accumulating Validation:
+     * a Failure becomes one error, an Empty becomes the given message.
+     */
+    public static <T> Validation<T> fromResult(Result<T> result, String emptyMessage) {
+        if (result.isSuccess()) {
+            return Validation.valid(result.getOrThrow());
+        }
+        if (result.isFailure()) {
+            return Validation.invalid(result.failureCause().getMessage());
+        }
+        return Validation.invalid(emptyMessage);
+    }
+
+    public static <T> Validation<T> fromResult(Result<T> result) {
+        return fromResult(result, "Empty value");
+    }
+
+    /**
+     * Keeps this value but also collects the other validation's errors.
+     */
+    public Validation<T> and(Validation<?> other) {
+        if (other.isValid()) {
+            return this;
+        }
+        List<String> all = new ArrayList<>(errors);
+        all.addAll(other.errors);
+        return Validation.invalid(all);
+    }
+
     public boolean isValid() {
         return errors.isEmpty();
     }
