@@ -9,25 +9,36 @@ import com.example.discount.PricingResult;
 import com.example.discount.application.api.ErrorResponse;
 import com.example.discount.application.api.PricingRequest;
 import com.example.discount.application.api.PricingResponse;
+import com.example.discount.application.config.CampaignProperties;
+import com.example.fpcore.Assertion;
 import com.example.fpcore.LazyStream;
 import com.example.fpcore.Result;
 import com.example.fpcore.Validation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class PricingService {
 
-    private static final BigDecimal FIVE_HUNDRED = new BigDecimal("500.00");
-    private static final BigDecimal ONE_PERCENT = new BigDecimal("0.01");
-    private static final BigDecimal TWO_PERCENT = new BigDecimal("0.02");
-    private static final BigDecimal MAX_DYNAMIC_RATE = new BigDecimal("0.10");
     private final DiscountOrchestratorV2 orchestrator = new DiscountOrchestratorV2();
+    private final CampaignProperties campaign;
+
+    public PricingService() {
+        this(CampaignProperties.defaults());
+    }
+
+    /**
+     * Invalid configuration is an edge effect: fail at startup, listing every bad property.
+     */
+    @Autowired
+    public PricingService(CampaignProperties campaign) {
+        this.campaign = campaign.validate().getOrThrow();
+    }
 
     public Result<PricingResult> quote(PricingRequest request) {
         return validateRequest(request)
@@ -54,35 +65,17 @@ public class PricingService {
     }
 
     private Validation<OrderContext> validateRequest(PricingRequest request) {
-        List<String> errors = new ArrayList<>();
         if (request == null) {
-            errors.add("Request body is required");
-            return Validation.invalid(errors);
+            return Validation.invalid("Request body is required");
         }
-
-        if (request.subtotal() == null) {
-            errors.add("subtotal is required");
-        } else if (request.subtotal().signum() <= 0) {
-            errors.add("subtotal must be greater than zero");
-        }
-
-        if (request.vip() == null) {
-            errors.add("vip is required");
-        }
-
-        if (request.hasCoupon() == null) {
-            errors.add("hasCoupon is required");
-        }
-
-        if (!errors.isEmpty()) {
-            return Validation.invalid(errors);
-        }
-
-        return Validation.valid(new OrderContext(
-                request.vip(),
-                request.hasCoupon(),
-                OrderPricing.of(request.subtotal())
-        ));
+        // Result inside a field (stop at first problem), Validation across fields (collect all)
+        return Validation.map3(
+                Validation.fromResult(Assertion.assertNotNull(request.subtotal(), "subtotal is required")
+                        .flatMap(s -> Assertion.assertPositive(s, "subtotal must be greater than zero"))),
+                Validation.fromResult(Assertion.assertNotNull(request.vip(), "vip is required")),
+                Validation.fromResult(Assertion.assertNotNull(request.hasCoupon(), "hasCoupon is required")),
+                (subtotal, vip, hasCoupon) -> new OrderContext(vip, hasCoupon, OrderPricing.of(subtotal))
+        );
     }
 
     private List<DiscountRule> defaultRules(OrderContext ctx) {
@@ -104,9 +97,9 @@ public class PricingService {
         );
 
         LazyStream<DiscountRule> dynamicCampaignRules = LazyStream
-                .iterate(new CampaignTier(FIVE_HUNDRED, TWO_PERCENT), this::nextTier)
+                .iterate(new CampaignTier(campaign.tierStep(), campaign.startRate()), this::nextTier)
                 .takeWhile(tier -> tier.threshold().compareTo(ctx.pricing().subtotal()) <= 0
-                        && tier.rate().compareTo(MAX_DYNAMIC_RATE) <= 0)
+                        && tier.rate().compareTo(campaign.maxRate()) <= 0)
                 .map(this::toCampaignRule);
 
         return baseRules.append(() -> dynamicCampaignRules).toList();
@@ -114,8 +107,8 @@ public class PricingService {
 
     private CampaignTier nextTier(CampaignTier current) {
         return new CampaignTier(
-                current.threshold().add(FIVE_HUNDRED),
-                current.rate().add(ONE_PERCENT)
+                current.threshold().add(campaign.tierStep()),
+                current.rate().add(campaign.rateStep())
         );
     }
 
