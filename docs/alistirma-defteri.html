@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FP Alıştırma Defteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: tek sütunlu çalışma defteri; üstte ilerleme ve filtreler, altta seviye seviye açılır alıştırma kartları */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --ink: #17211f;
+  --muted: #5b6965;
+  --line: #d9e0dd;
+  --accent: #0f6b5c;
+  --accent-soft: #dcefe9;
+  --code-bg: #eef2f0;
+  --done: #2f7d32;
+  --doing: #b26a00;
+  --l1: #3a7ca5; --l2: #6a5acd; --l3: #0f6b5c; --l4: #a0522d; --l5: #8b3a62; --l6: #44546a;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111715; --surface: #18201e; --ink: #e4ebe8; --muted: #9aaba5; --line: #2b3633;
+    --accent: #5cc4ae; --accent-soft: #1d332e; --code-bg: #0d1311; --done: #7cc47f; --doing: #e0a443;
+    --l1: #7bb6dc; --l2: #a99bf0; --l3: #5cc4ae; --l4: #e0946a; --l5: #df8fb6; --l6: #9fb0c8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111715; --surface: #18201e; --ink: #e4ebe8; --muted: #9aaba5; --line: #2b3633;
+  --accent: #5cc4ae; --accent-soft: #1d332e; --code-bg: #0d1311; --done: #7cc47f; --doing: #e0a443;
+  --l1: #7bb6dc; --l2: #a99bf0; --l3: #5cc4ae; --l4: #e0946a; --l5: #df8fb6; --l6: #9fb0c8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+}
+.wrap {
+  max-width: 920px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: flex; flex-direction: column; gap: 28px;
+}
+header { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 .lam { color: var(--accent); }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+
+.progress { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; }
+.bar { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.count { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.levels-mini { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.levels-mini b { font-weight: 600; }
+
+.filters { display: flex; flex-direction: column; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-right: 4px; align-self: center; }
+.chip {
+  font: 500 13px var(--font-body); color: var(--ink);
+  background: transparent; border: 1px solid var(--line); border-radius: 99px;
+  padding: 4px 12px; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.chip:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.level { display: flex; flex-direction: column; gap: 10px; }
+.level-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 2px solid var(--lc); padding-bottom: 6px; }
+.level-head h2 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; }
+.level-head .tag { font-family: var(--font-mono); font-size: 12px; color: var(--lc); }
+.level-head p { margin: 0; color: var(--muted); font-size: 13.5px; flex-basis: 100%; }
+
+details.ex { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+details.ex[data-status="done"] { border-color: color-mix(in srgb, var(--done) 45%, var(--line)); }
+details.ex summary {
+  list-style: none; cursor: pointer; padding: 12px 14px;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center;
+}
+details.ex summary::-webkit-details-marker { display: none; }
+.num { font-family: var(--font-mono); font-size: 12px; color: var(--lc); font-variant-numeric: tabular-nums; min-width: 2.2em; }
+.ttl { font-weight: 600; min-width: 0; }
+.ttl small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.pill { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.doing { color: var(--doing); border-color: var(--doing); }
+.pill.done { color: var(--done); border-color: var(--done); }
+.body { padding: 0 14px 16px 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px dashed var(--line); padding-top: 14px; min-width: 0; }
+.body h4 { margin: 0 0 2px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.body p, .body ul { margin: 0; }
+.body ul { padding-left: 18px; }
+.concepts { display: flex; flex-wrap: wrap; gap: 6px; }
+.concepts span { font-size: 12px; background: var(--accent-soft); color: var(--accent); padding: 1px 8px; border-radius: 4px; }
+.concepts span.ch { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+pre { margin: 0; background: var(--code-bg); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font: 13px/1.5 var(--font-mono); }
+code { font-family: var(--font-mono); font-size: .92em; }
+table.cases { border-collapse: collapse; width: 100%; font-size: 13px; }
+.tbl { overflow-x: auto; }
+table.cases th, table.cases td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.cases th { color: var(--muted); font-weight: 600; font-size: 12px; }
+table.cases td { font-family: var(--font-mono); font-size: 12.5px; }
+.hint { border-left: 3px solid var(--lc); padding: 6px 10px; background: var(--code-bg); border-radius: 0 6px 6px 0; }
+.hint summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.hint p { margin-top: 6px; }
+.status-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.status-row label { font-size: 13px; color: var(--muted); }
+select { font: 14px var(--font-body); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.proj { font-size: 13.5px; }
+.empty { color: var(--muted); font-style: italic; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
+@media (max-width: 520px) {
+  details.ex summary { grid-template-columns: auto 1fr; }
+  details.ex summary .pill { grid-column: 2; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Saumont · Functional Programming in Java · pratik</div>
+    <h1><span class="lam">λ</span> FP Alıştırma Defteri</h1>
+    <p class="lede">Temel yazılım eğitiminde ve iş hayatında karşına çıkan 30 problem. Her alıştırma gerçek bir senaryo, istenen fonksiyon imzası, örnek girdi/çıktı tablosu ve kitaptaki ilgili bölümle geliyor. Çözümü <code>fpcore</code> tiplerinle (List, Result, Option, Validation, TailCall, LazyStream) yaz. Markdown sürümü: <a href="ALISTIRMALAR.md">ALISTIRMALAR.md</a>.</p>
+  </header>
+
+  <section class="progress" aria-label="İlerleme">
+    <div class="bar"><span id="barFill"></span></div>
+    <div class="count" id="countText">0 / 30 bitti</div>
+    <div class="levels-mini" id="levelsMini"></div>
+  </section>
+
+  <section class="filters" aria-label="Filtreler">
+    <div class="chips" id="levelChips"><span class="chips-label">Seviye</span></div>
+    <div class="chips" id="conceptChips"><span class="chips-label">Kavram</span></div>
+    <div class="chips" id="statusChips"><span class="chips-label">Durum</span></div>
+  </section>
+
+  <main id="list"></main>
+
+  <footer>
+    Durumlar yalnızca bu tarayıcıda saklanır. Önerilen tempo: haftada bir seviye; her alıştırmada önce imperatif çözümü aklından geçir, sonra "döngü yok, null yok, exception yok, mutation yok" kuralıyla yeniden yaz.
+  </footer>
+</div>
+
+<script>
+const LEVELS = [
+  { id: 1, name: "Saf fonksiyonlar ve kompozisyon", tag: "Bölüm 2–3", color: "--l1",
+    note: "Yan etkisiz fonksiyon yazma, compose/andThen, currying. Her şeyin temeli." },
+  { id: 2, name: "Özyineleme ve fold", tag: "Bölüm 4–5", color: "--l2",
+    note: "Döngü yerine fold; derin özyinelemede TailCall ile stack güvenliği." },
+  { id: 3, name: "Hata yönetimi: Option, Result, Validation", tag: "Bölüm 6–7, 15", color: "--l3",
+    note: "null ve exception yerine değer döndürme; kısa devre ile hata biriktirme farkı." },
+  { id: 4, name: "Koleksiyonlar ve tembellik", tag: "Bölüm 8–9", color: "--l4",
+    note: "traverse/sequence, zip, groupBy; sonsuz ve lazy veri, memoization." },
+  { id: 5, name: "Durum ve etkiler", tag: "Bölüm 12–13", color: "--l5",
+    note: "Değişen durumu (state) parametre olarak taşıma, etkileri programın kenarına itme." },
+  { id: 6, name: "Gerçek hayat mini projeleri", tag: "Hepsi bir arada", color: "--l6",
+    note: "Önceki seviyelerin birleşimi; her biri küçük bir domain modeli." }
+];
+
+const EX = [
+  // ---------- Seviye 1
+  { id: 1, level: 1, title: "KDV hesaplayıcı", sub: "E-ticaret · saf fonksiyon",
+    concepts: ["saf fonksiyon", "BigDecimal"], ch: "2.1",
+    scenario: "Ürün fiyatına KDV ekleyen bir fonksiyon lazım. Oran sistemden okunuyor ama fonksiyonun kendisi hiçbir dış duruma dokunmamalı.",
+    task: "Oranı parametre alan, fiyat döndüren saf bir fonksiyon yaz. Sonuç 2 haneye HALF_UP yuvarlanmalı.",
+    sig: "Function<BigDecimal, BigDecimal> addVat(BigDecimal rate)",
+    cases: [["addVat(0.20).apply(100.00)", "120.00"], ["addVat(0.10).apply(19.99)", "21.99"], ["addVat(0.00).apply(5)", "5.00"]],
+    hint: "Oranı dışarıdan alan bir fonksiyon döndür: rate -> price -> price.multiply(ONE.add(rate)).setScale(2, HALF_UP). Static bir alan ya da singleton'dan oran okursan fonksiyon saf olmaz." },
+  { id: 2, level: 1, title: "Fiyat hattı (pipeline)", sub: "E-ticaret · kompozisyon",
+    concepts: ["compose", "andThen"], ch: "2.2–2.3",
+    scenario: "Sepet fiyatı sırayla: kampanya indirimi → KDV → kuruş yuvarlama. Adımların sırası iş kuralı; değişmesi kolay olmalı.",
+    task: "Üç küçük fonksiyon yaz ve bunları tek bir Function'a kompoze et. Sonra sırayı değiştirip (önce KDV sonra indirim) sonucun farkını gözle.",
+    sig: "Function<BigDecimal, BigDecimal> pipeline = discount(0.10).andThen(addVat(0.20)).andThen(round2)",
+    cases: [["pipeline.apply(100)", "108.00"], ["ters sıra: addVat.andThen(discount)", "108.00 (yüzdelerde aynı!)"], ["discount sabit 10 TL ise", "sıra sonucu değiştirir"]],
+    hint: "Yüzde indirimler çarpma olduğu için yer değiştirebilir (commutative); sabit tutarlı indirimde (−10 TL) değiştiremez. Bu, kompozisyon sırasının neden iş kuralı olduğunu gösterir." },
+  { id: 3, level: 1, title: "Kargo ücreti", sub: "Lojistik · currying",
+    concepts: ["currying", "kısmi uygulama"], ch: "2.3.6–2.3.8",
+    scenario: "Kargo ücreti bölgeye, desiye ve teslim hızına bağlı. Bölge oturum başında bilinir, desi sepete göre değişir.",
+    task: "Üç parametreli fonksiyonu curried biçimde yaz; bölgeyi önceden uygulayıp tek parametreli hesaplayıcılar üret.",
+    sig: "Function<Region, Function<Speed, Function<Integer, BigDecimal>>> shippingFee",
+    cases: [["shippingFee(MARMARA)(STANDARD)(3)", "45.00"], ["shippingFee(DOGU)(EXPRESS)(3)", "112.50"], ["istanbul = shippingFee(MARMARA)(STANDARD); istanbul(1)", "35.00"]],
+    hint: "Taban ücret = bölge tabanı + desi × birim; EXPRESS çarpanı 1.5. Kısmi uygulama sayesinde sepet ekranı sadece desiyi bilen bir fonksiyon alır." },
+  { id: 4, level: 1, title: "URL slug üretici", sub: "CMS / blog · string dönüşümleri",
+    concepts: ["compose", "saf fonksiyon"], ch: "2.2",
+    scenario: "Blog yazısı başlığından URL üretilecek: \"Java'da Fonksiyonel Programlama!\" → \"javada-fonksiyonel-programlama\".",
+    task: "trim, Türkçe karakter dönüşümü, küçük harf, noktalama temizliği ve boşluk → tire adımlarını ayrı fonksiyonlar olarak yazıp compose et.",
+    sig: "Function<String, String> slugify",
+    cases: [["\"  Çok Güzel Şeyler  \"", "\"cok-guzel-seyler\""], ["\"Java'da FP!\"", "\"javada-fp\""], ["\"a  --  b\"", "\"a-b\""]],
+    hint: "toLowerCase(new Locale(\"tr\")) kullanmazsan \"I\" yanlış dönüşür. Her adımı tek tek test edebilmek kompozisyonun asıl kazancı." },
+  { id: 5, level: 1, title: "Sıralama kuralı kurucu", sub: "Ürün listeleme · higher-order",
+    concepts: ["higher-order", "Comparator"], ch: "2.3",
+    scenario: "Ürün listesi kullanıcının seçimine göre sıralanır: önce stokta olanlar, sonra fiyat, eşitse puan (azalan).",
+    task: "Seçimlerden (List<SortKey>) bir Comparator üreten fonksiyon yaz. Comparator'ları foldLeft ile birleştir.",
+    sig: "Comparator<Product> comparatorFor(List<SortKey> keys)",
+    cases: [["[IN_STOCK, PRICE_ASC]", "stoktakiler önce, kendi içinde ucuzdan pahalıya"], ["[] (boş)", "sıra değişmez (0 döndüren comparator)"], ["[RATING_DESC]", "puanı yüksek olan önce"]],
+    hint: "Birim eleman (a, b) -> 0, birleştirme thenComparing. Bu bir monoid: fold için tam uygun.",
+    proj: "Projede DiscountRanking.BEST_FIRST aynı fikir: amount → priority → ruleName." },
+
+  // ---------- Seviye 2
+  { id: 6, level: 2, title: "Sepet toplamı", sub: "E-ticaret · foldLeft",
+    concepts: ["foldLeft"], ch: "3.3.5, 5.6",
+    scenario: "Sepet kalemleri (birim fiyat × adet) toplanacak; aynı zamanda toplam adet de lazım.",
+    task: "Tek bir foldLeft ile hem toplam tutarı hem toplam adedi hesapla (Tuple biriktirici).",
+    sig: "Tuple<BigDecimal, Integer> totals(List<CartLine> lines)",
+    cases: [["[(10.00 ×2), (5.50 ×1)]", "(25.50, 3)"], ["[]", "(0, 0)"], ["[(0.10 ×3)]", "(0.30, 3) — double kullanma!"]],
+    hint: "Başlangıç değeri new Tuple<>(ZERO, 0); fonksiyon acc -> line -> new Tuple<>(acc._1.add(...), acc._2 + line.qty()). İki ayrı döngü yerine tek geçiş." },
+  { id: 7, level: 2, title: "Kelime frekansı", sub: "Metin analizi · fold + Map",
+    concepts: ["foldLeft", "groupBy"], ch: "5.6, 8.5",
+    scenario: "Müşteri yorumlarında en sık geçen 5 kelime raporlanacak (stop-word'ler hariç).",
+    task: "Metni kelimelere ayır, filtrele, frekans tablosunu fold ile kur, en sık 5 tanesini döndür.",
+    sig: "List<Tuple<String, Integer>> topWords(String text, int n, Set<String> stopWords)",
+    cases: [["\"kargo hızlı kargo iyi\", n=1", "[(kargo, 2)]"], ["\"ve ve ve\" (ve stop-word)", "[]"], ["eşit frekans", "alfabetik sıra (deterministik)"]],
+    hint: "Eşitlikte sırayı sabitlemeyi unutma; DiscountRanking'deki üçüncü anahtar gibi. Map'i mutable güncellemek yerine her adımda yeni değer üret ya da groupBy kullan." },
+  { id: 8, level: 2, title: "Hesap dökümü ve yürüyen bakiye", sub: "Bankacılık · scanLeft",
+    concepts: ["foldLeft", "scanLeft"], ch: "5.6",
+    scenario: "Banka ekstresinde her işlemden sonraki bakiye gösterilir. Açılış bakiyesi ve işlem listesi verili.",
+    task: "foldLeft ile scanLeft yaz (ara sonuçların hepsini döndüren fold) ve yürüyen bakiyeyi hesapla.",
+    sig: "<A, B> List<B> scanLeft(List<A> list, B zero, Function<B, Function<A, B>> f)",
+    cases: [["açılış 100, [+50, −30, −200]", "[100, 150, 120, −80]"], ["boş liste", "[100]"], ["10 000 işlem", "StackOverflow yok"]],
+    hint: "Biriktirici, ters sırada tutulan bir liste olsun: acc.cons(f(acc.head)(a)); sonda reverse. Böylece her adım O(1)." },
+  { id: 9, level: 2, title: "Klasör boyutu", sub: "Dosya sistemi · ağaç özyinelemesi",
+    concepts: ["özyineleme", "fold"], ch: "4, 10",
+    scenario: "Bir klasör ağacında toplam boyut ve en büyük dosya bulunacak. Klasörler iç içe ve sayısı belirsiz.",
+    task: "Node = File(name, size) | Dir(name, List<Node>) tipini tanımla; boyutu ve en büyük dosyayı özyinelemeli fold ile bul.",
+    sig: "long totalSize(Node n);  Option<File> largest(Node n)",
+    cases: [["Dir[File 10, Dir[File 30, File 5]]", "45 ; File 30"], ["boş Dir", "0 ; None"], ["tek File 7", "7 ; Some(File 7)"]],
+    hint: "Bir sum type: her durumu ayrı ele al. largest için Option'ları birleştirirken boş klasör None verir; null döndürme." },
+  { id: 10, level: 2, title: "Taksit planı", sub: "Fintech · stack-safe özyineleme",
+    concepts: ["TailCall", "özyineleme"], ch: "4.2",
+    scenario: "Kredi taksit planı ay ay üretilir: her ay faiz eklenir, taksit düşülür. 360 aylık konut kredisi de olabilir.",
+    task: "Planı özyinelemeli yaz; sonra TailCall ile stack-safe hâle getir ve 100 000 adımla dene.",
+    sig: "List<Installment> plan(BigDecimal principal, BigDecimal monthlyRate, BigDecimal payment)",
+    cases: [["1000, %1, 340", "3 taksit, sonuncusu kalan tutar"], ["taksit < faiz", "sonsuz döngü yerine Result.failure"], ["çok küçük taksit", "TailCall ile StackOverflow yok"]],
+    hint: "Önce saf bir step(state) yaz, sonra go(acc, state) ile ret/sus kullan. Taksitin faizi karşılamadığı durumu döngüye girmeden yakala." },
+
+  // ---------- Seviye 3
+  { id: 11, level: 3, title: "Profilden şehir okuma", sub: "Kullanıcı verisi · Option zinciri",
+    concepts: ["Option", "flatMap"], ch: "6.3",
+    scenario: "user.getAddress().getCity().getName() zinciri, adres ya da şehir null olduğunda patlıyor.",
+    task: "Her getter'ı Option döndürecek şekilde sar ve zinciri flatMap ile kur. Şehir yoksa \"Bilinmiyor\" göster.",
+    sig: "String cityLabel(Option<User> user)",
+    cases: [["adres var, şehir var", "\"İzmir\""], ["adres yok", "\"Bilinmiyor\""], ["user None", "\"Bilinmiyor\""]],
+    hint: "user.flatMap(User::address).flatMap(Address::city).map(City::name).getOrElse(\"Bilinmiyor\"). Hiç if yok." },
+  { id: 12, level: 3, title: "Güvenli sayı okuma", sub: "Form girdisi · Result",
+    concepts: ["Result", "total fonksiyon"], ch: "7.4",
+    scenario: "Kullanıcı adet alanına \"üç\", \"-2\" ya da \"99999999999\" yazabiliyor.",
+    task: "String'den pozitif int'e çeviren total fonksiyonu yaz; her hata durumu kendi mesajını taşısın.",
+    sig: "Result<Integer> parseQuantity(String raw)",
+    cases: [["\"3\"", "Success(3)"], ["\"üç\"", "Failure(\"adet sayı olmalı: üç\")"], ["\"-2\"", "Failure(\"adet pozitif olmalı: -2\")"], ["null", "Failure(\"adet boş olamaz\")"]],
+    hint: "Assertion.assertNotNull → parse (try/catch tek yerde) → Assertion.assertCondition. Hata mesajında değeri de göster (15.2.3).",
+    proj: "Projedeki fpcore.Assertion ile doğrudan yazabilirsin." },
+  { id: 13, level: 3, title: "Kayıt formu doğrulama", sub: "Web · hata biriktirme",
+    concepts: ["Validation", "map3"], ch: "7, 15.1",
+    scenario: "Üyelik formunda e-posta, şifre ve yaş var. Kullanıcı tüm hatalarını tek seferde görmeli.",
+    task: "Her alan için Result döndüren doğrulayıcılar yaz, sonra Validation.map3 ile hataları birleştir.",
+    sig: "Validation<Member> register(String email, String password, String age)",
+    cases: [["geçerli üçü", "valid(Member)"], ["kötü e-posta + kısa şifre", "2 hata birlikte"], ["yaş \"abc\" ve 15", "alan içinde ilk hata: \"yaş sayı olmalı\""]],
+    hint: "Alan içinde Result.flatMap (sırayla, ilk hatada dur), alanlar arasında Validation (hepsini topla). PricingService.validateRequest ile aynı kalıp." },
+  { id: 14, level: 3, title: "CSV sipariş içe aktarma", sub: "Veri entegrasyonu · traverse",
+    concepts: ["traverse", "sequence", "Result"], ch: "8.3",
+    scenario: "Tedarikçi her gün sipariş CSV'si gönderiyor. Bir satır bozuksa dosyanın tamamı reddedilmeli ve hangi satır olduğu söylenmeli.",
+    task: "Satır → Result<Order> parse fonksiyonunu yaz; List.traverse ile Result<List<Order>> elde et. Hata mesajı satır numarasını içersin.",
+    sig: "Result<List<Order>> importCsv(List<String> lines)",
+    cases: [["3 geçerli satır", "Success([o1, o2, o3])"], ["2. satırda fiyat \"x\"", "Failure(\"satır 2: fiyat geçersiz: x\")"], ["boş dosya", "Success([])"]],
+    hint: "Satır numarası için önce zipWith(range(1, n+1)) ya da index'li bir Tuple listesi üret. Alternatif: tüm hatalı satırları listelemek istersen Validation ile traverse yaz." },
+  { id: 15, level: 3, title: "Ortam ayarları okuma", sub: "Backend · yapılandırma",
+    concepts: ["Result", "mapFailure"], ch: "15.2",
+    scenario: "Uygulama DB_URL, DB_POOL_SIZE ve FEATURE_FLAGS ortam değişkenlerini okuyor. Eksik ya da hatalı değerde açılırken ne yanlış olduğunu söylemeli.",
+    task: "Map<String,String> kaynağından tipli okuyucular yaz: getString, getInt (aralık kontrolüyle), getList. Hepsi hatada değişken adını ve değeri göstersin.",
+    sig: "Result<DbConfig> readDbConfig(Map<String, String> env)",
+    cases: [["tamamı doğru", "Success(DbConfig)"], ["DB_POOL_SIZE=abc", "Failure(\"Invalid value for DB_POOL_SIZE: abc\")"], ["DB_URL yok", "Failure(\"Property DB_URL not found\")"]],
+    hint: "Okuma kaynağını parametre yap (Map), System.getenv'e doğrudan bağlanma; böylece test edebilirsin. Etki (getenv) en dışta.",
+    proj: "CampaignProperties.validate() aynı ilkeyle yazıldı." },
+  { id: 16, level: 3, title: "Döviz çevirici", sub: "Fintech · map2",
+    concepts: ["map2", "lift"], ch: "7.6, 8.2",
+    scenario: "Tutar TRY → EUR çevrilecek. Tutar kullanıcıdan, kur bir servisten geliyor; ikisi de başarısız olabilir.",
+    task: "İki Result'ı map2 ile birleştiren convert fonksiyonu yaz. Sonra lift2 ile normal (a, b) -> c fonksiyonunu Result dünyasına taşı.",
+    sig: "Result<BigDecimal> convert(Result<BigDecimal> amount, Result<BigDecimal> rate)",
+    cases: [["Success(100), Success(0.028)", "Success(2.80)"], ["Failure(kur servisi kapalı), Success(..)", "Failure(kur servisi kapalı)"], ["Empty, Success(..)", "Empty"]],
+    hint: "map2(ra, rb, a -> b -> a.multiply(b).setScale(2, HALF_UP)). İçeride if yok; başarısızlık yayılımını Result yapıyor." },
+
+  // ---------- Seviye 4
+  { id: 17, level: 4, title: "Sayfalama", sub: "REST API · List işlemleri",
+    concepts: ["drop", "take", "splitAt"], ch: "5, 8.4",
+    scenario: "Ürün listesi ?page=3&size=20 parametreleriyle sayfa sayfa döndürülüyor; toplam sayfa sayısı da lazım.",
+    task: "Saf bir paginate fonksiyonu yaz; geçersiz sayfa ya da boyut için Result.failure döndür.",
+    sig: "Result<Page<T>> paginate(List<T> items, int page, int size)",
+    cases: [["45 öğe, page=3, size=20", "5 öğe, totalPages=3"], ["page=0", "Failure(\"page 1'den başlar\")"], ["page=4 (aralık dışı)", "boş sayfa ya da Failure (kararını ver)"]],
+    hint: "drop((page-1)*size).take(size). Aralık dışı sayfa iş kararı: boş liste mi, hata mı? İkisini de savunabilirsin; testle belgeye dök." },
+  { id: 18, level: 4, title: "Not ortalaması ve karne", sub: "Eğitim · zip, map, groupBy",
+    concepts: ["zipWith", "groupBy", "map"], ch: "8.4–8.5",
+    scenario: "Öğrenci listesi ve ayrı bir not listesi var (aynı sıra). Her öğrencinin ağırlıklı ortalaması ve harf notu hesaplanacak, sonra sınıf harf notuna göre gruplanacak.",
+    task: "zipWith ile öğrenci ve notları eşle; ortalama → harf notu dönüşümünü yaz; groupBy ile dağılımı çıkar.",
+    sig: "Map<Letter, List<String>> report(List<Student> s, List<List<Integer>> grades, List<Double> weights)",
+    cases: [["vize 60, final 80 (0.4/0.6)", "72 → CC"], ["listeler farklı uzunlukta", "Failure (sessizce kesme!)"], ["boş sınıf", "boş map"]],
+    hint: "zipWith kısa listeye göre keser; bu hatayı gizler. Önce uzunluk eşitliğini Assertion ile kontrol et." },
+  { id: 19, level: 4, title: "Log tarama", sub: "Operasyon · lazy stream",
+    concepts: ["LazyStream", "takeWhile", "filter"], ch: "9",
+    scenario: "Büyük bir log dosyasında belirli bir saatten sonraki ilk 10 ERROR satırı lazım. Dosyanın tamamını belleğe almak istemiyorsun.",
+    task: "Satırları lazy bir stream olarak modelle; dropWhile(zaman < başlangıç) → filter(ERROR) → take(10) zincirini kur. Kaç satırın gerçekten okunduğunu say.",
+    sig: "List<LogLine> firstErrors(LazyStream<String> lines, LocalTime from, int n)",
+    cases: [["1 000 000 satır, ilk 10 ERROR 500. satırda bitiyor", "~500 satır okunur"], ["hiç ERROR yok", "[] (tüm akış okunur)"], ["n=0", "[] ve hiç satır okunmaz"]],
+    hint: "Okunan satır sayısını görmek için kaynağı bir sayaçla sar (sadece testte). Lazy olmasaydı 1 000 000 satırın tamamı işlenirdi." },
+  { id: 20, level: 4, title: "Sonsuz fatura numarası", sub: "Muhasebe · sonsuz akış",
+    concepts: ["iterate", "unfold"], ch: "9.4",
+    scenario: "Fatura numaraları FT-2026-000001 biçiminde ve yıl başında sıfırlanıyor.",
+    task: "Başlangıç tarihi ve sayaçtan sonsuz bir numara akışı üret; yıl değişimini unfold durumunda ele al.",
+    sig: "LazyStream<String> invoiceNumbers(int year, int start)",
+    cases: [["(2026, 1).take(2)", "[FT-2026-000001, FT-2026-000002]"], ["(2026, 999999).take(2)", "taşma: Failure ya da yeni seri (karar ver)"], ["take(0)", "[]"]],
+    hint: "unfold(state, s -> Option<Tuple<value, nextState>>) ile durum (yıl, sayaç) taşı. Akış sonsuz; takeWhile ya da take olmadan toList çağırma." },
+  { id: 21, level: 4, title: "Pahalı hesaplamayı önbelleğe alma", sub: "Performans · memoization",
+    concepts: ["memoization", "saf fonksiyon"], ch: "4.4",
+    scenario: "Posta koduna göre vergi bölgesi hesaplamak 200 ms sürüyor ve sonuç hiç değişmiyor.",
+    task: "Herhangi bir Function<A,B>'yi memoize eden genel bir sarmalayıcı yaz; çağrı sayısını sayarak doğrula.",
+    sig: "<A, B> Function<A, B> memoize(Function<A, B> f)",
+    cases: [["aynı posta kodu 3 kez", "f 1 kez çağrılır"], ["farklı 2 kod", "f 2 kez çağrılır"], ["paralel çağrı", "ConcurrentHashMap.computeIfAbsent"]],
+    hint: "Memoization sadece saf fonksiyonlarda güvenli: sonucu zamana ya da dış duruma bağlı bir fonksiyonu önbelleğe almak hata üretir." },
+
+  // ---------- Seviye 5
+  { id: 22, level: 5, title: "Test edilebilir kupon kodu", sub: "Kampanya · State + RNG",
+    concepts: ["State", "RNG"], ch: "12.1–12.2",
+    scenario: "Kampanya için 8 karakterlik rastgele kupon kodları üretiliyor. Testte aynı kodların tekrar üretilebilmesi gerekiyor.",
+    task: "RNG'yi durum olarak taşıyan Random<String> yaz; sequence ile n kod üret. Aynı seed aynı kodları vermeli.",
+    sig: "Random<List<String>> coupons(int n)  // Random<A> = State<RNG, A>",
+    cases: [["seed 42, n=3", "her çalıştırmada aynı 3 kod"], ["seed 43", "farklı kodlar"], ["n=0", "[] ve RNG değişmez"]],
+    hint: "Karakter seçimi = intRnd.map(i -> ALPHABET.charAt(abs(i) % len)); 8 karakter = sequence(fill(8, charRnd)). Math.random() kullanırsan test edemezsin." },
+  { id: 23, level: 5, title: "Otopark bariyeri", sub: "Gömülü sistem · durum makinesi",
+    concepts: ["state machine", "foldLeft"], ch: "12.3",
+    scenario: "Bariyer: kart okutulunca açılır, araç geçince kapanır, kapalıyken araç algılanırsa alarm verir.",
+    task: "Durum ve girdi tiplerini tanımla; (State, Input) → State saf geçiş fonksiyonunu yaz. Girdi listesini foldLeft ile işle.",
+    sig: "BarrierState step(BarrierState s, Input i);  BarrierState run(List<Input> inputs)",
+    cases: [["[CARD, CAR_PASSED]", "CLOSED, geçiş=1"], ["[CAR_PASSED] (kapalıyken)", "ALARM"], ["[CARD, CARD]", "OPEN (ikinci kart etkisiz)"]],
+    hint: "Kitaptaki Condition/Transition listesi ya da sealed interface + switch. Geçiş fonksiyonu saf olduğu için her senaryo bir tablo testi olur." },
+  { id: 24, level: 5, title: "Sepet olay kaydı", sub: "Event sourcing · fold",
+    concepts: ["foldLeft", "immutable"], ch: "5, 12",
+    scenario: "Sepet doğrudan güncellenmiyor; ItemAdded, ItemRemoved, CouponApplied olayları saklanıyor. Güncel sepet olaylardan yeniden kuruluyor.",
+    task: "Olay tiplerini tanımla, apply(Cart, Event) → Cart yaz, olay listesini fold ile katlayarak sepeti kur. Bir olaya kadar olan geçmiş durumu da göster.",
+    sig: "Cart replay(List<Event> events);  Cart replayUntil(List<Event> events, int n)",
+    cases: [["[Add(A,2), Add(B,1), Remove(A)]", "{B:1}"], ["Remove olmayan ürünü", "sepet değişmez ya da Failure (karar)"], ["replayUntil(…, 1)", "{A:2}"]],
+    hint: "Geçmişe dönmek bedava: aynı fold'u ilk n olayla çalıştır. Mutable sepetle bunu yapamazdın." },
+  { id: 25, level: 5, title: "Rapor üret, sonra yaz", sub: "Raporlama · etkileri kenara itme",
+    concepts: ["Effect", "saf çekirdek"], ch: "13.1–13.2",
+    scenario: "Gün sonu satış raporu hesaplanıp hem dosyaya yazılıyor hem e-postayla gönderiliyor. Şu an hesaplama ve yazma iç içe.",
+    task: "Raporu saf bir fonksiyonla üret (List<Sale> → Report → String). Etkileri (dosya, e-posta) Effect<String> olarak dışarıdan ver; Result.forEachOrFail ile uygula.",
+    sig: "Result<String> render(List<Sale> sales);  void main: render(...).forEachOrFail(fileEffect)",
+    cases: [["test", "render'ı etkisiz test et; Effect'i sahte bir listeye yazdır"], ["boş satış", "\"Bugün satış yok\" raporu, hata değil"], ["yazma başarısız", "hata yalnızca main'de raporlanır"]],
+    hint: "Kural: try/catch ve System.out sadece main'de. render içinde LocalDate.now() çağırma; tarihi parametre al." },
+  { id: 26, level: 5, title: "Yeniden deneme politikası", sub: "Entegrasyon · etkiyi tarif etme",
+    concepts: ["Supplier", "Result", "TailCall"], ch: "13.3",
+    scenario: "Ödeme servisine istek ara sıra zaman aşımına uğruyor. 3 kez, artan beklemeyle denenmeli.",
+    task: "Etkiyi Supplier<Result<T>> olarak al; retry(n, delays) bir Supplier<Result<T>> döndürsün. Bekleme fonksiyonunu da parametre yap ki test anında bitsin.",
+    sig: "<T> Supplier<Result<T>> retry(Supplier<Result<T>> call, List<Duration> delays, Effect<Duration> sleep)",
+    cases: [["2. denemede başarılı", "Success, sleep 1 kez"], ["hep başarısız, 3 gecikme", "son Failure, sleep 3 kez"], ["gecikme listesi boş", "tek deneme"]],
+    hint: "retry çağrıldığında hiçbir şey olmaz; sadece programı tarif eder. Çalışma .get() ile başlar. Bu, 13. bölümdeki \"program döndüren fonksiyon\" fikri." },
+
+  // ---------- Seviye 6
+  { id: 27, level: 6, title: "Kargo takip durumu", sub: "Lojistik · olaylar + durum makinesi",
+    concepts: ["state machine", "Result", "foldLeft"], ch: "7, 12",
+    scenario: "Kargo olayları sırasız gelebiliyor (DELIVERED, OUT_FOR_DELIVERY'den önce). Müşteriye doğru güncel durum ve tahmini teslim gösterilmeli.",
+    task: "Olayları zamana göre sırala, geçerli geçişleri kontrol eden bir fold yaz; geçersiz geçişi Result.failure ile raporla (hangi olay, hangi durumdan).",
+    sig: "Result<Shipment> track(List<ShipmentEvent> events)",
+    cases: [["sırasız ama geçerli olaylar", "DELIVERED"], ["DELIVERED → IN_TRANSIT", "Failure(\"geçersiz geçiş\")"], ["hiç olay yok", "CREATED"]],
+    hint: "foldLeft(Result.success(initial), acc -> e -> acc.flatMap(s -> transition(s, e))). Kısa devre ilk geçersiz geçişte durur." },
+  { id: 28, level: 6, title: "Fatura motoru", sub: "Muhasebe · uçtan uca",
+    concepts: ["Validation", "fold", "BigDecimal"], ch: "7, 8, 15",
+    scenario: "Fatura satırları farklı KDV oranlarında (%1, %10, %20). Satır iskontosu, genel iskonto, KDV dökümü ve kuruş yuvarlama farkı hesaplanacak.",
+    task: "Satırları doğrula (Validation), oranlara göre grupla, her grup için matrah ve KDV hesapla, genel toplamı yuvarlama farkını kaybetmeden üret.",
+    sig: "Validation<Invoice> issue(List<InvoiceLineInput> lines, BigDecimal generalDiscount)",
+    cases: [["3 satır, 2 farklı oran", "oran başına matrah + KDV dökümü"], ["negatif adet satırı", "satır numarasıyla hata"], ["0.10 × 3 satır", "0.30 (yuvarlama farkı yok)"]],
+    hint: "Önce satır bazında yuvarla mı, toplamda mı? Bu bir iş kuralı; parametre yap. Projedeki OrderPricing.addDiscount'un \"toplam 0'ın altına düşmez\" kuralına bak." },
+  { id: 29, level: 6, title: "Hız sınırlayıcı (rate limiter)", sub: "API güvenliği · saf durum geçişi",
+    concepts: ["State", "saf fonksiyon"], ch: "12",
+    scenario: "Her kullanıcı dakikada en fazla 60 istek atabilir (kayan pencere). Zamanı okuyan kod test edilemez hâle geliyor.",
+    task: "Zamanı parametre alan saf bir fonksiyon yaz: (pencere durumu, şimdi) → (izin var mı, yeni durum). Saati sadece en dış katmanda oku.",
+    sig: "Tuple<Boolean, Window> tryAcquire(Window w, Instant now, int limit, Duration span)",
+    cases: [["59 istek, 60.", "(true, …)"], ["60 istek, 61.", "(false, durum değişmez)"], ["61 sn sonra", "eski istekler düşer, (true, …)"]],
+    hint: "Window içinde zaman damgalarının immutable listesi; önce süresi dolanları at (dropWhile), sonra boyutu kontrol et. Bu State<Window, Boolean>'ın ta kendisi." },
+  { id: 30, level: 6, title: "Toplantı çakışma kontrolü", sub: "Takvim · sıralama + fold",
+    concepts: ["foldLeft", "Option", "zip"], ch: "5, 8",
+    scenario: "Toplantı odası rezervasyonunda yeni bir aralık eklenmeden önce çakışma kontrol ediliyor; ayrıca günün boş aralıkları listelenecek.",
+    task: "Aralıkları başlangıca göre sırala; çakışan çiftleri bul; mesai saatleri içindeki boşlukları ardışık çiftler üzerinden (zip(list, list.tail)) hesapla.",
+    sig: "List<Tuple<Slot, Slot>> conflicts(List<Slot> s);  List<Slot> freeSlots(List<Slot> s, Slot workday)",
+    cases: [["09-10, 09:30-11", "1 çakışma"], ["09-10, 10-11", "çakışma yok (uç noktalar)"], ["hiç toplantı yok", "boş = tüm mesai"]],
+    hint: "Uç nokta kuralını ([başlangıç, bitiş) yarı açık aralık) baştan belirle; 11. bölümdeki > / >= hatası burada da çıkar." }
+];
+
+const STATUS = { todo: "Başlanmadı", doing: "Devam ediyor", done: "Bitti" };
+const KEY = "fp-alistirma-durum-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+const filters = { level: "all", concept: "all", status: "all" };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const statusOf = id => state[id] || "todo";
+
+const allConcepts = [...new Set(EX.flatMap(e => e.concepts))].sort((a, b) => a.localeCompare(b, "tr"));
+
+function chip(group, value, label) {
+  const b = document.createElement("button");
+  b.className = "chip"; b.type = "button"; b.textContent = label;
+  b.setAttribute("aria-pressed", String(filters[group] === value));
+  b.addEventListener("click", () => { filters[group] = value; renderChips(); renderList(); });
+  return b;
+}
+function renderChips() {
+  const fill = (id, group, items) => {
+    const el = document.getElementById(id);
+    [...el.querySelectorAll(".chip")].forEach(n => n.remove());
+    items.forEach(([v, l]) => el.appendChild(chip(group, v, l)));
+  };
+  fill("levelChips", "level", [["all", "Tümü"], ...LEVELS.map(l => [String(l.id), l.id + " · " + l.name.split(":")[0]])]);
+  fill("conceptChips", "concept", [["all", "Tümü"], ...allConcepts.map(c => [c, c])]);
+  fill("statusChips", "status", [["all", "Tümü"], ...Object.entries(STATUS)]);
+}
+
+function card(e) {
+  const st = statusOf(e.id);
+  const d = document.createElement("details");
+  d.className = "ex"; d.dataset.status = st; d.id = "ex-" + e.id;
+  const rows = e.cases.map(c => `<tr><td>${esc(c[0])}</td><td>${esc(c[1])}</td></tr>`).join("");
+  d.innerHTML = `
+    <summary>
+      <span class="num">#${String(e.id).padStart(2, "0")}</span>
+      <span class="ttl">${esc(e.title)}<small>${esc(e.sub)}</small></span>
+      <span class="pill ${st}">${STATUS[st]}</span>
+    </summary>
+    <div class="body">
+      <div class="concepts">${e.concepts.map(c => `<span>${esc(c)}</span>`).join("")}<span class="ch">Kitap: ${esc(e.ch)}</span></div>
+      <div><h4>Senaryo</h4><p>${esc(e.scenario)}</p></div>
+      <div><h4>Görev</h4><p>${esc(e.task)}</p></div>
+      <div><h4>İmza</h4><pre><code>${esc(e.sig)}</code></pre></div>
+      <div><h4>Kabul kriterleri</h4><div class="tbl"><table class="cases"><thead><tr><th>Girdi</th><th>Beklenen</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+      ${e.proj ? `<p class="proj"><strong>Projede:</strong> ${esc(e.proj)}</p>` : ""}
+      <details class="hint"><summary>İpucu</summary><p>${esc(e.hint)}</p></details>
+      <div class="status-row">
+        <label for="st-${e.id}">Durum</label>
+        <select id="st-${e.id}">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === st ? "selected" : ""}>${v}</option>`).join("")}</select>
+      </div>
+    </div>`;
+  d.querySelector("select").addEventListener("change", ev => {
+    state[e.id] = ev.target.value; save();
+    d.dataset.status = ev.target.value;
+    const pill = d.querySelector(".pill");
+    pill.className = "pill " + ev.target.value; pill.textContent = STATUS[ev.target.value];
+    renderProgress();
+    if (filters.status !== "all") renderList();
+  });
+  return d;
+}
+
+function renderList() {
+  const root = document.getElementById("list");
+  root.innerHTML = "";
+  root.style.display = "flex"; root.style.flexDirection = "column"; root.style.gap = "30px";
+  let shown = 0;
+  LEVELS.forEach(l => {
+    if (filters.level !== "all" && filters.level !== String(l.id)) return;
+    const items = EX.filter(e => e.level === l.id
+      && (filters.concept === "all" || e.concepts.includes(filters.concept))
+      && (filters.status === "all" || statusOf(e.id) === filters.status));
+    if (!items.length) return;
+    shown += items.length;
+    const sec = document.createElement("section");
+    sec.className = "level"; sec.style.setProperty("--lc", `var(${l.color})`);
+    sec.innerHTML = `<div class="level-head"><h2>${l.id}. ${esc(l.name)}</h2><span class="tag">${esc(l.tag)}</span><p>${esc(l.note)}</p></div>`;
+    items.forEach(e => sec.appendChild(card(e)));
+    root.appendChild(sec);
+  });
+  if (!shown) root.innerHTML = `<p class="empty">Bu filtrelerle eşleşen alıştırma yok. Bir filtreyi "Tümü" yap.</p>`;
+}
+
+function renderProgress() {
+  const done = EX.filter(e => statusOf(e.id) === "done").length;
+  document.getElementById("barFill").style.width = (done / EX.length * 100) + "%";
+  document.getElementById("countText").textContent = `${done} / ${EX.length} bitti`;
+  document.getElementById("levelsMini").innerHTML = LEVELS.map(l => {
+    const xs = EX.filter(e => e.level === l.id);
+    const d = xs.filter(e => statusOf(e.id) === "done").length;
+    return `<span><b style="color:var(${l.color})">S${l.id}</b> ${d}/${xs.length}</span>`;
+  }).join("");
+}
+
+renderChips(); renderList(); renderProgress();
+</script>
+</body>
+</html>
