@@ -6,6 +6,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static com.example.fpcore.CollectionUtils.*;
+
 public final class Folds {
 
     private Folds() {}
@@ -17,6 +19,18 @@ public final class Folds {
             acc = f.apply(acc, a);
         }
         return acc;
+    }
+    // curried version of foldLeft
+    public static <A,B> B fold (List<A> list, B identity, Function<B, Function<A, B>> f){
+        B acc = identity;
+        for (A a: list) {
+            acc = f.apply(acc).apply(a);
+        }
+        return acc;
+    }
+
+    public static <A,B> B foldRight(List<A> list, B identity, Function<A, Function<B, B>> f) {
+        return list.isEmpty() ? identity : f.apply(head(list)).apply(foldRight(tail(list), identity, f));
     }
 
     public static <A> List<A> reverse (List<A> list) {
@@ -46,6 +60,15 @@ public final class Folds {
             return List.copyOf(next);
         });
     }
+
+    // curried version of map
+    public static <T,U> List<U> mapViaFoldLeft(List<T> list, Function<T,U> f){
+        return fold(list, list(), x-> y-> append(x,f.apply(y)));
+    }
+
+
+
+
 
 
 

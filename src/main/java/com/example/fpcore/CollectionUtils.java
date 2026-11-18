@@ -1,9 +1,16 @@
 package com.example.fpcore;
 
+import com.example.discount.simple.helper.Effect;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+
+import static com.example.fpcore.Folds.fold;
+import static com.example.fpcore.Folds.foldLeft;
 
 public class CollectionUtils {
 
@@ -51,6 +58,36 @@ public class CollectionUtils {
         List<T> workingCopy = copy(list);
         workingCopy.add(0, t);
         return Collections.unmodifiableList(workingCopy);
+    }
+
+    public static <T> List<T> prepend(List<T> list, T t){
+        return fold(list, list(t), x -> y -> append(x,y)); //fold left
+    }
+
+    public static <T> List<T> reverse(List<T> list){
+        return fold(list, list(), x -> y -> prepend(x,y));
+    }
+
+    public static <T> void forEach(Collection<T> collection, Effect<T> effect) {
+        for (T t : collection) effect.apply(t);
+    }
+
+    public static <T> List<T> unfold (T seed, Function<T, T> f, Function<T, Boolean> p) {
+        List<T> result = new ArrayList<>();
+        T temp = seed;
+        while(p.apply(temp)) {
+            result = append(result, temp);
+            temp = f.apply(temp);
+        }
+        return result;
+    }
+
+    public static List<Integer> range (int start, int end) {
+        return unfold(start, x->x+1, x-> x < end);
+    }
+
+    public static List<Integer> recursivelyRange (int start, int end) {
+        return end <= start ? list() : prepend(recursivelyRange(start+1, end), start);
     }
 
 }
