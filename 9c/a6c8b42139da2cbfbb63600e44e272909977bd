@@ -1,0 +1,43 @@
+src/main/java/com/example/exercises/SortKey.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-35
+src/main/java/com/example/exercises/UrlSlugMaker.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-51
+src/test/java/com/example/exercises/BasicTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-25
+src/main/java/com/example/exercises/BasketTotal.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-24
+src/test/java/com/example/exercises/FixedPricePipelineTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-108
+src/test/java/com/example/exercises/Shipping.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-51
+src/test/java/com/example/exercises/BasketTotalTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-89
+src/test/java/com/example/exercises/ShippingTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-64
+src/test/java/com/example/exercises/SortKeyTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-115
+src/test/java/com/example/exercises/UrlSlugMakerTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-99
+src/test/java/com/example/exercises/PricePipelineTest.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-56
+src/main/java/com/example/exercises/PricePipeline.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-56
+src/main/java/com/example/exercises/Basic.java
+  s_3329cf77d25985::t_6fcef958fe93e3 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ca6c8b42139da2cbfbb63600e44e272909977bd",
+  "prompts": {},
+  "sessions": {
+    "s_3329cf77d25985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74923ec6-4b23-4cbf-98aa-b9a115bf5f4e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "tcseydaozdemir1 <ozdemir.seyda@atmosware.turkcell.com.tr>"
+    }
+  }
+}
