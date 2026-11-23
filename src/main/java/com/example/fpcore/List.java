@@ -205,6 +205,15 @@ public abstract class List<A> {
         return foldRight(list(), h -> t -> concat(f.apply(h), t));
     }
 
+    /** Tek geçişte ikiye ayırır: _1 koşulu sağlayanlar, _2 sağlamayanlar; iki tarafta da sıra korunur. */
+    public Tuple<List<A>, List<A>> partition(Function<A, Boolean> condition) {
+        Tuple<List<A>, List<A>> empty = new Tuple<>(list(), list());
+        return foldRight(empty, h -> acc ->
+                condition.apply(h)
+                        ? new Tuple<>(acc._1.cons(h), acc._2)
+                        : new Tuple<>(acc._1, acc._2.cons(h)));
+    }
+
     public <B> B foldLeft(B identity, Function<B,Function<A,B>> f){
         return foldLeft_(identity,this,f).eval();
     }
