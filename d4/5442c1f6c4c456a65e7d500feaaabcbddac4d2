@@ -1,0 +1,23 @@
+src/test/java/com/example/exercises/WorkFrequencyTest.java
+  s_3329cf77d25985::t_d9900fe05b3fa9 1-291
+src/main/java/com/example/exercises/WorkFrequency.java
+  s_3329cf77d25985::t_d9900fe05b3fa9 1-98
+src/main/java/com/example/fpcore/List.java
+  s_3329cf77d25985::t_d9900fe05b3fa9 208-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d45442c1f6c4c456a65e7d500feaaabcbddac4d2",
+  "prompts": {},
+  "sessions": {
+    "s_3329cf77d25985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74923ec6-4b23-4cbf-98aa-b9a115bf5f4e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "tcseydaozdemir1 <ozdemir.seyda@atmosware.turkcell.com.tr>"
+    }
+  }
+}
