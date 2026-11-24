@@ -1,0 +1,19 @@
+.gitignore
+  s_3f8aa4e0b4ccaa::t_d304f1dfd13eba 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4db57794b819a266537a8b5a87055abce371d289",
+  "prompts": {},
+  "sessions": {
+    "s_3f8aa4e0b4ccaa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80009dc5-e822-4075-b406-013e40e90901",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "tcseydaozdemir1 <ozdemir.seyda@atmosware.turkcell.com.tr>"
+    }
+  }
+}
